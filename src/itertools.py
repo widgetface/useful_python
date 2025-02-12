@@ -1,10 +1,7 @@
-from typing import List
-from itertools import batched
+from utils import pager
 
-for batch in batched("Hello, world!", 3):
-    print(batch)
-
-nums: List[int] = [1, 2, 3, 4, 5]
-
-batches = batched(nums, n=3)
-print(next(batches))
+pager = pager.Pager(range(10), page_size=4)
+print(pager.prev_page())  # None
+print(pager.next_page())  # (0, 1, 2, 3)
+print(pager.prev_page())  # None
+print(pager.next_page())  # (4, 5, 6, 7)
