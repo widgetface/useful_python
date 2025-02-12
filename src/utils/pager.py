@@ -1,19 +1,23 @@
+from typing import Iterator, Union, List
 from itertools import batched
 
 # Using batched to paginate
+Element = Union[str, int]
 
 
 class Pager:
-    def __init__(self, results, page_size=25):
-        self.pages = batched(results, page_size)
+    def __init__(self, pages: List[Element], page_size: int = 10):
+        self.pages: Iterator = batched(pages, page_size)
         # Initialise empty navigation caches.
-        self.prev_pages = []
-        self.next_pages = []
+        self.prev_pages: List[Element] = []
+        self.next_pages: List[Element] = []
 
     def next_page(self):
         """Gets the next page of results or None."""
         # Get the next page, possibly from the navigation cache.
-        next_page = self.next_pages.pop() if self.next_pages else next(self.pages, None)
+        next_page: Element = (
+            self.next_pages.pop() if self.next_pages else next(self.pages, None)
+        )
         if next_page is not None:
             self.prev_pages.append(next_page)
 
