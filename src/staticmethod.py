@@ -1,6 +1,10 @@
 # Organizational Benefit: You may want to group related functions under a class, even if those functions don't need access to instance-specific data. This can help with organization and structure, especially if you have a set of related functions that could conceptually belong to the class.
 # Namespace: Static methods can also help avoid naming conflicts since they belong to the class namespace.
 # Code clarity: It’s clear that the function is logically related to the class but doesn’t require an instance of it.
+# Note:
+# utility functions are often a simpler and more intuitive way to structure code
+# when you don't need to manage state or functionality that is tightly coupled to an object.
+
 
 class TemperatureConverter:
     @staticmethod
