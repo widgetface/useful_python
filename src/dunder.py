@@ -1,6 +1,3 @@
-# using @classmethod to create specialized objects for specific types of cars.
-# Avoid subclasses for each sepcialized object.
-
 class Example:
     # class will have a fixed set of attributes
     # Much more eficient
@@ -40,6 +37,8 @@ e = Example()
 print(e())
 # You cannot get secret -> print(e.secret)
 
+# using @classmethod to create specialized objects for specific types of cars.
+# Avoid subclasses for each sepcialized object.
 
 class Car:
     def __init__(self, make, model, year, max_speed):
