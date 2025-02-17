@@ -1,3 +1,6 @@
+# using @classmethod to create specialized objects for specific types of cars.
+# Avoid subclasses for each sepcialized object.
+
 class Example:
     # class will have a fixed set of attributes
     # Much more eficient
