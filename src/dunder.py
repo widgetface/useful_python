@@ -6,7 +6,7 @@ class Example:
     # # __slots__ = ['name', 'score']
 
     def __new__(cls):
-        print("Creating Instance aclled before __init__")
+        print("Creating Instance called before __init__")
         return super(Example, cls).__new__(cls)
 
 
