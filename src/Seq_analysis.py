@@ -59,19 +59,6 @@ class TestNC(TypedDict):
     cytosine_count: int = 0
 
 
-@dataclass(slots=True)
-class SequenceStatistics:
-    adenine_count: int = 0
-    thymine_count: int = 0
-    guanine_count: int = 0
-    cytosine_count: int = 0
-    k_mer_count_2: Dict[str, int] = field(default_factory=dict)
-    k_mer_count_3: Dict[str, int] = field(default_factory=dict)
-    k_mer_count_4: Dict[str, int] = field(default_factory=dict)
-    k_mer_count_5: Dict[str, int] = field(default_factory=dict)
-    dna_sequences: List[DNASequence] = field(default_factory=list)
-
-
 class MetaData(TypedDict):
     total_adenine_count: int
     total_thymine_count: int
@@ -83,7 +70,7 @@ class MetaData(TypedDict):
     k_mer_count_5: Dict[str, int]
 
 
-class SequenceStatisticsTest(TypedDict):
+class SequenceStatistics(TypedDict):
     meta_data: MetaData
     dna_sequences: List[DNASequence] = {}
 
@@ -276,7 +263,7 @@ if __name__ == "__main__":
 
     # print(len(cleaned_sequence_data))
     # Example task function
-    def process_data(sequence: str, seq_doc: SequenceStatisticsTest):
+    def process_data(sequence: str, seq_doc: SequenceStatistics):
         print(f"nuc coubt {seq_doc}")
         nucleotide_counts = count_nucleotides(sequence=sequence)
         print(nucleotide_counts)
@@ -289,10 +276,10 @@ if __name__ == "__main__":
     # Function to run multiprocessing
     def process_data_parallel(data):
         print("Start")
-        seq_doc = SequenceStatisticsTest()
+        seq_doc = SequenceStatistics()
         with Manager() as manager:
             # Create a dictionary to store the running total
-            nucleotide_totals = manager.dict(seq_doc)
+            seq_doc = manager.dict(seq_doc)
             print("Done manager")
             # Create a pool of processes
             with Pool(processes=num_cores) as pool:
