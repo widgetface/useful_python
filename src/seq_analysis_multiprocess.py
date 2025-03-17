@@ -1,7 +1,7 @@
 import json
 import os
 from typing import List, TypedDict
-from multiprocessing import Manager, Pool
+from multiprocessing import Pool
 
 # from typing import Dict, List, NamedTuple, Set, TypedDict
 # from collections import defaultdict, Counter
