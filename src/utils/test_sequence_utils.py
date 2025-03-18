@@ -1,145 +1,198 @@
-from utils.sequence_utils import (
-    count_k_mers,
-    count_nucleotides,
-    find_longest_dna_palindrome,
-    update_k_mer_counts,
-    update_nucleotide_counts,
-    validate_sequence,
+from typing import Dict, List, Set
+from collections import defaultdict, Counter
+from .data_types import (
+    DNASequence,
+    K_MERS,
+    NucleotideCount,
+    NucleotideCounts,
+    SequenceStatistics,
 )
+from .markdown import MarkdownGenerator
 
-import pytest
-
-INVALID_SEQUENCE = "A"
-SEQUENCE = "ATGTGCTTGC"
-PALINDROME = "TGAATTCGGC"
-INVALID_PALINDROME = "GCAACGTAGCTGG"
-NUCLEOTIDE_LIST = {"A", "T", "G", "C"}
+GC_ISLAND_MOTIF = "CG"
+TATA_BOX_MOTIF = "TATA"
+MIN_PALINDROME_LENGTH = 20
 
 
-# Run test ith  python -m pytest tests
-@pytest.mark.count_kemers
-def test_count_kmers():
-    valid_kmer_2 = {"at": 1, "tg": 3, "gt": 1, "gc": 2, "ct": 1, "tt": 1}
-    valid_kmer_3 = {
-        "atg": 1,
-        "tgt": 1,
-        "gtg": 1,
-        "tgc": 2,
-        "gct": 1,
-        "ctt": 1,
-        "ttg": 1,
-    }
-    valid_kmer_4 = {
-        "atgt": 1,
-        "tgtg": 1,
-        "gtgc": 1,
-        "tgct": 1,
-        "gctt": 1,
-        "cttg": 1,
-        "ttgc": 1,
-    }
-
-    valid_kmer_5 = {
-        "atgtg": 1,
-        "tgtgc": 1,
-        "gtgct": 1,
-        "tgctt": 1,
-        "gcttg": 1,
-        "cttgc": 1,
-    }
-
-    assert count_k_mers(sequence=INVALID_SEQUENCE, number_nucleotides=2) == {}
-    assert count_k_mers(sequence=SEQUENCE, number_nucleotides=2) == valid_kmer_2
-    assert count_k_mers(sequence=SEQUENCE, number_nucleotides=3) == valid_kmer_3
-    assert count_k_mers(sequence=SEQUENCE, number_nucleotides=4) == valid_kmer_4
-    assert count_k_mers(sequence=SEQUENCE, number_nucleotides=5) == valid_kmer_5
+def find_top_values(results: K_MERS, limit: int) -> List[tuple]:
+    return sorted(results.items(), key=lambda item: item[1], reverse=True)[:limit]
 
 
-@pytest.mark.count_nucleotides
-def test_count_nucleotides():
-    valid_count = {"a": 1, "t": 4, "g": 3, "c": 2}
-    assert count_nucleotides(SEQUENCE) == valid_count
+def clean_sequence_data(
+    sequences: List[str], letter_list=None, min_length=2
+) -> List[str]:
+    if letter_list is None:
+        letter_list = {"A", "T", "G", "C"}
+    else:
+        letter_list = set(letter_list)
+    clean_list = []
+    for sequence in sequences:
+        # Check if sequence is long enough and contains only valid letters
+        if len(sequence) > min_length and all(
+            letter in letter_list for letter in sequence
+        ):
+            # Add to clean_list if not seen before
+            if sequence not in clean_list:
+                clean_list.append(sequence)
+
+    return clean_list
 
 
-@pytest.mark.find_longest_palindrome
-def test_find_longest_palidrome():
-    longest_palidrome = find_longest_dna_palindrome(PALINDROME, min_length=6)
-    invalid_longest_palindrome = find_longest_dna_palindrome(
-        INVALID_PALINDROME, min_length=6
+def find_motif(sequence: str, motif: str) -> List[str]:
+    positions = [
+        i for i in range(len(sequence) - 1) if sequence[i : i + len(motif)] == motif
+    ]
+    step = len(motif)
+    pos_len = len(positions)
+    longest = 0
+    seen = set()
+    for i in range(0, pos_len, step):
+        value = sequence[i : i + step]
+        if value == motif:
+            longest += step
+        else:
+            seen.add(longest)
+            longest = 0
+    return max(seen) if len(seen) > 0 else 0
+
+
+def reverse_complement(seq):
+    """Returns the reverse complement of a DNA sequence."""
+    complement = {"A": "T", "T": "A", "C": "G", "G": "C"}
+    return "".join(complement[base] for base in reversed(seq))
+
+
+def precompute_reverse_complement(sequence):
+    """Precomputes the reverse complement for a DNA sequence."""
+    return reverse_complement(sequence)
+
+
+def find_longest_dna_palindrome(sequence, min_length=20):
+    """Finds all palindromes in a DNA sequence of at least min_length using precomputed reverse complement."""
+    longest = {"palindrome_seq": "", "palindrome_length": 0}
+    seq_length = len(sequence)
+
+    # Precompute the reverse complement of the entire sequence
+    rev_complement = precompute_reverse_complement(sequence)
+
+    # Loop over all possible subsequences starting from min_length up to the sequence length
+    for length in range(min_length, seq_length + 1):
+        for i in range(seq_length - length + 1):
+            subseq = sequence[i : i + length]
+            rev_subseq = rev_complement[
+                seq_length - i - length : seq_length - i
+            ]  # Get the reverse complement slice
+            if subseq == rev_subseq and len(subseq) > longest["palindrome_length"]:
+                longest["palindrome_seq"] = subseq
+                longest["palindrome_length"] = len(subseq)
+
+    return longest
+
+
+def count_nucleotides(sequence: str) -> NucleotideCount:
+    return defaultdict(int, Counter(sequence.lower().strip()))
+
+
+def update_nucleotide_counts(
+    nucleotide_counts: NucleotideCounts, sequence_stats: SequenceStatistics
+) -> SequenceStatistics:
+    sequence_stats["meta_data"]["adenine_count"] += nucleotide_counts.get("a", 0)
+    sequence_stats["meta_data"]["thymine_count"] += nucleotide_counts.get("t", 0)
+    sequence_stats["meta_data"]["guanine_count"] += nucleotide_counts.get("g", 0)
+    sequence_stats["meta_data"]["cytosine_count"] += nucleotide_counts.get("c", 0)
+    return sequence_stats
+
+
+def create_dna_sequence_record(
+    id: int,
+    nucleotide_counts: NucleotideCounts,
+    sequence: str,
+    min_length: int,
+    k_mers: K_MERS,
+) -> DNASequence:
+    longest_palindrome = find_longest_dna_palindrome(
+        sequence=sequence, min_length=min_length
     )
-    assert invalid_longest_palindrome["palindrome_seq"] == ""
-    assert invalid_longest_palindrome["palindrome_length"] == 0
-    assert longest_palidrome["palindrome_seq"] == "GAATTC"
-    assert longest_palidrome["palindrome_length"] == 6
+    cpg_islands = find_motif(sequence=sequence, motif=GC_ISLAND_MOTIF)
+    tata_boxes = find_motif(sequence=sequence, motif=TATA_BOX_MOTIF)
 
-
-@pytest.mark.update_k_mer_counts
-def test_update_k_mer_counts():
-    current_kmer_count = {
-        "atg": 1,
-        "tgt": 1,
-        "gtg": 1,
-        "tgc": 2,
-        "gct": 1,
-        "ctt": 1,
-        "ttg": 1,
-    }
-    new_ker_count = {
-        "atg": 1,
-        "tgt": 2,
-        "gtg": 1,
-        "tgc": 2,
-        "gct": 1,
-        "ctt": 1,
-        "ttg": 1,
-    }
-
-    valid_result = {
-        "atg": 2,
-        "tgt": 3,
-        "gtg": 2,
-        "tgc": 4,
-        "gct": 2,
-        "ctt": 2,
-        "ttg": 2,
-    }
-
-    assert update_k_mer_counts(current_kmer_count, {}) == current_kmer_count
-    assert update_k_mer_counts(current_kmer_count, new_ker_count) == valid_result
-
-
-@pytest.mark.update_nucleotide_counts
-def test_update_nucleotide_counts():
-    current_count = {
-        "meta_data": {
-            "adenine_count": 1,
-            "thymine_count": 1,
-            "guanine_count": 1,
-            "cytosine_count": 1,
-        }
-    }
-
-    new_count = {"a": 2, "t": 3, "g": 1, "c": 5}
-
-    valid_count = {
-        "meta_data": {
-            "adenine_count": 3,
-            "thymine_count": 4,
-            "guanine_count": 2,
-            "cytosine_count": 6,
-        }
-    }
-    assert update_nucleotide_counts({}, current_count) == current_count
-    assert update_nucleotide_counts(new_count, current_count) == valid_count
-
-
-@pytest.mark.validate_sequence
-def test_validate_sequence():
-    assert (
-        validate_sequence(sequence="AGCTGGCCTTATTATT", letter_list=NUCLEOTIDE_LIST)
-        is True
+    return DNASequence(
+        id=id,
+        adenine_count=nucleotide_counts["a"],
+        thymine_count=nucleotide_counts["t"],
+        guanine_count=nucleotide_counts["g"],
+        cytosine_count=nucleotide_counts["c"],
+        palindrome=longest_palindrome,
+        motifs={"cpg_islands": cpg_islands, "tata_boxes": tata_boxes},
+        k_mers=k_mers,
     )
-    assert (
-        validate_sequence(sequence="OGCTGGCCTTATTATT", letter_list=NUCLEOTIDE_LIST)
-        is False
+
+
+def count_k_mers(sequence, number_nucleotides) -> Dict[str, int]:
+    oligo_counts = defaultdict(int)
+    sequence = sequence.lower().strip()
+    sequence_length = len(sequence)
+    if sequence_length < number_nucleotides:
+        return {}
+    for i, _ in enumerate(sequence[: -(number_nucleotides - 1)]):
+        key = sequence[i : i + number_nucleotides]
+        oligo_counts[key] += 1
+    return dict(
+        sorted(oligo_counts.items(), key=lambda item: item[1], reverse=True)[:5]
     )
+
+
+def update_k_mer_counts(current_counts: dict, new_counts: dict) -> Dict:
+    current_counts = Counter(current_counts)
+    current_counts.update(new_counts)
+    return dict(current_counts)
+
+
+def validate_sequence(
+    sequence: List[str], letter_list: Set[str], min_length=2
+) -> List[str]:
+    seen_list = []
+    seen = seen_list.append
+    # Check if sequence is long enough and contains only valid letters
+    if len(sequence) > min_length and all(letter in letter_list for letter in sequence):
+        if sequence not in seen_list:
+            seen(sequence)
+            return True
+    else:
+        return False
+
+
+def create_k_mer_row(header: List[str], kmers: List[tuple]) -> List[List[str]]:
+    rows = []
+    rows.append(header)
+    for k_mer in kmers:
+        key, value = k_mer
+        rows.append([key, str(value)])
+    return rows
+
+
+def generate_report(sequence_stats: SequenceStatistics, output_path: str):
+    md = MarkdownGenerator()
+    md.add_header("DNA Statistics Report")
+    md.add_linebreak()
+    md.add_text(f"Total number sequences = {sequence_stats['total_sequences_count']}")
+    md.add_text(
+        f"Total number invalid sequences = {sequence_stats['invalid_sequences_count']}"
+    )
+    md.add_linebreak()
+    md.add_text("Total nucleotide counts:")
+    md.add_linebreak()
+    md.add_text(f"Adenine = {sequence_stats['total_adenine_count']}")
+    md.add_text(f"Thymine = {sequence_stats['total_thymine_count']}")
+    md.add_text(f"Guanine = {sequence_stats['total_guanine_count']}")
+    md.add_text(f"Cytosine = {sequence_stats['total_cytosine_count']}")
+    md.add_linebreak()
+    kmers_2_rows = create_k_mer_row(
+        header=["k_mer (k2)", "number"], kmers=sequence_stats["total_k_mer_count_2"]
+    )
+    md.add_table(kmers_2_rows)
+    kmers_3_rows = create_k_mer_row(
+        header=["k_mer (k3)", "number"], kmers=sequence_stats["total_k_mer_count_3"]
+    )
+    md.add_table(kmers_3_rows)
+    md.save(output_path)
